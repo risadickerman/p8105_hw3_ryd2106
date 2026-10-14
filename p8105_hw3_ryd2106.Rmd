@@ -1,0 +1,19 @@
+---
+title: "p8105_hw3_ryd2106.Rmd"
+author: "Risa Dickerman"
+date: "2026-10-14"
+output: github_document
+---
+
+```{r libraries, echo = FALSE, message = FALSE}
+library(tidyverse)
+```
+
+
+
+#Problem 2
+
+```{r read_in_packages, message = FALSE}
+accel = read_csv("./data_hw3/nhanes_accel.csv")
+```
+
