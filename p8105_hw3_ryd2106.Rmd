@@ -34,12 +34,7 @@ covar = read_csv("./data_hw3/nhanes_covar.csv", skip = 4,
     SEQN = col_factor(),
     age = col_integer()
     )) |> 
-    filter(
-    BMI != is.na(BMI),
-    age != is.na(age),
-    education != is.na(education),
-    sex != is.na(sex)
-      ) |> 
+    drop_na( BMI, age, education, sex) |> 
   janitor::clean_names()
 
 
@@ -51,7 +46,6 @@ covar_accel = right_join(accel, covar,  by = "seqn") |>
 
 ```{r female_male_education}
 gender = covar_accel |> 
-  distinct(seqn, sex, education, age, mims, minute) |> 
   mutate(
     sex = case_match(
       sex,
@@ -68,27 +62,35 @@ gender = covar_accel |>
   mutate(
     education = forcats::fct_relevel(education, c("Less_than_Highschool", "Highschool", "More_than_Highschool"))
     ) |>
+  mutate(
+    sex = as.factor(sex)
+  ) |> 
   arrange(education) 
 
 gender_edu_t = gender|> 
+  distinct(seqn, sex, education, age) |> 
   janitor::tabyl(education, sex) 
 
 gender_age_edu_p = gender |> 
-  ggplot(aes(x = age, fill = education)) +
-  geom_histogram(binwidth = 2, color = "black") +
+  distinct(seqn, sex, education, age) |> 
+  ggplot(aes(x = age)) +
+  geom_histogram(binwidth = 2, fill = "white", color = "royalblue4") +
   facet_grid(sex~education) +
   labs(
     title = "Age Distributions for Men and Women per Education",
-    
+    x = "Age",
+    y = "Number of participants"
   )
-theme_set(theme_minimal() + theme(legend.position = "bottom"))
+theme_set(theme_minimal())
 
 gender_edu_t
 gender_age_edu_p
 ```
-To create a table of gender to education level, I first created a gender data frame. For this data frame, I ensured that that there were not multiple counts of the same seqn variable. For legibility, I renamed the numerical factors of sex and education to their corresponding literal labels. I then ensured that the education level followed a linear progression from less than a highschool education to more than a highschool education. This dataframe was piped into the tabyl function to create a reader friendly table of counts of education level by sex.
+Before creating a table of gender vs education level, I first created a gender data frame that would be used for all problem 2 related graphs and tables. For this dataframe, I ensured legibility by renaming the numerical factors of sex and education to their corresponding literal labels. I then ensured that the education level followed a linear progression from less than a highschool education to more than a highschool education. This gender
 
-To create a histogram of the number of age distributions for men and women in each education category, I piped in the gender data frame into the ggplot function. I specified that it must be a histogram, colored by education level. Faceting by sex and education, I created a side by side comparison of these distributions. For aesthetics I converted the theme to be more minimal, widened the bins, and colored the outside of the bins black.
+To create the gender vs education table, I piped in the gender dataframe. I then ensured that no seqn value was double counted by passing it into the distinct function. Finally the resulting data was piped into the tabyl function to create a reader friendly table of counts of education level by sex. The resulting table lists counts of participants by gender and education level.
+
+To create a histogram of the number of age distributions for men and women in each education category, I first piped in the gender data frame and ensured unique counts of the participant by their seqn id. I then created a histogram of the resultant data. I specified that it must be a histogram. Faceting by sex and education, I created a side by side comparison of these distributions. For aesthetics I converted the theme to be more minimal, widened the bins, filled the insdie white and colored the outsides blue. The resulting diagram shows 6 separate histograms showing the counts of participants by age. There are 2 rows, delimited by gender, and 3 columns delimited by education level. The color scheme matches the school spirit.
 
 
 ```{r activity_level by age_sex/education}
@@ -102,13 +104,39 @@ act_level_p = gender |>
   distinct(seqn, total_activity, age, sex, education) |> 
    ggplot(aes(x = age, y = total_activity, color = sex))+
   geom_point() +
-  geom_smooth() +
+  geom_smooth(se = FALSE) +
   facet_grid(~education) +
   labs(
-    title = "Total Activity Level by Age. Comparisons by Sex and Education."
+    title = "Total Activity Level by Age, Comparisons of Sex and Education",
+    x = "Age",
+    y = "24-Hour Activity"
   )
   
 act_level_p
 ```
-To create a plot comparing total activity level by age, with a further comparison by sex and education, I piped in the previously created gender data frame. From this I aggregated the mims across the minutes of the day to create a total activity level variable. To ensure that no seqn values were double counted, I passed the resulting table through the distinct function. I then created a scatterplot of the total activity vs age of the participant. This plot was faceted by education and a comparison of gender was done by coloring by this variable. I finally added a title.
+To create a plot comparing total activity level by age, with a further comparison by sex and education, I piped in the previously created gender data frame. From this I aggregated the mims across the minutes of the day to create a total activity level variable. To ensure that no seqn values were double counted, I passed the resulting table through the distinct function. I then created a scatterplot of the total activity vs age of the participant. This plot was faceted by education and a comparison of gender was done by coloring by this variable. I finally added a title, and renamed the x/y axes. This plot shows the relation between total activity and the age of the participant. An additional comparison is made across sex and education level. A clear decrease of total activity can be seen with the increasing age. This decrease is steepest within lower education levels, with a more gradual decrease for more educate participants. While sex is closer together in the least educated, their is more dichotomy between gender as the education level progresses. Females were found to have higher activity levels compared to their male counterparts in these higher education levels.
 
+```{r activity_level over the day}
+act_over_day = gender |> 
+  select(minute, mims, sex, education) |> 
+  mutate(
+    minute = as.numeric(gsub("min", "", minute)),
+  ) |> 
+  group_by(sex, minute, education) |> 
+  mutate(
+    mims = mean(mims)
+  ) |> 
+  ggplot(aes(x = minute, y = mims, color = sex)) +
+  geom_point(alpha = 0.005) +
+  geom_smooth()+
+  facet_grid(~education) +
+  labs(
+    title = "Activity Level Over the Day, Comparison of Sex and Education",
+    x = "Minutes",
+    y = "MIMS"
+  )
+act_over_day
+```
+From this resultant graph I can see an indication that participants who have less education have slightly higher mims over the waking period (the 500-1250 minute time interval), but no strong conclusions can be made. In the less than high school education participants, there is less of a dichotomy over gender with male and female lines mainly overlapping. In more educated segments the gender dichotomy is more apparent with females having observably higher mims over the same waking period. When transitioning into the night (the 1250-250 minute time interval), activity declines substantially.
+
+##Problem 3
