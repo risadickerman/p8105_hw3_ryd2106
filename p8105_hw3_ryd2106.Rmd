@@ -9,11 +9,49 @@ output: github_document
 library(tidyverse)
 ```
 
+##Problem 1
+
+```{r}
+library(p8105.datasets)
+data("ny_noaa") 
+ny_weather = ny_noaa |> 
+  janitor::clean_names() |> 
+  mutate(
+    year = substr(date, 1, 4),
+    month = substr(date, 6, 7),
+    day = substr(date, 9, 10)
+  ) |> 
+  select(!date) |> 
+  mutate(
+    tmax = as.numeric(tmax) / 10,
+    tmin = as.numeric(tmin) / 10,
+    prcp = as.numeric(prcp) / 10,
+    snow = as.numeric(snow) / 10
+  )|> 
+  drop_na(prcp, snow, snwd, tmax, tmin)
+
+head(ny_weather)
+```
+The weather dataset contains `r nrow(ny_weather)` observations and `r ncol(ny_weather)` variables. Each observation represents a specific date per region. Key variables include tmax and tmin, which represent the maximum and minimum temperatures, as well as prcp and snow, which represent the amount of rain and snow respectively. Missing data are common in the prcp, snw, tmin and tmax columns.
+
+```{r}
+snow_comm = ny_weather |> 
+  group_by(snow) |> 
+  summarize(
+    count = n()
+  ) |> 
+  arrange(desc(count))
+
+snow_comm
+```
+
+The most common units of snowfall is 0 inches followed by 2.5, and 1.3 inches. Because there are more months with no snow (Summer, Fall, Spring) than winter this makes since.
+
 
 
 #Problem 2
 
-```{r read_in_packages and tidy data, message = FALSE}
+```{r read in packages and tidy data, message = FALSE}
 accel = read_csv("./data_hw3/nhanes_accel.csv",
                   na = c("", ".", "NA"),
                  col_types =cols(
@@ -44,7 +82,7 @@ covar_accel = right_join(accel, covar,  by = "seqn") |>
 ```
 
 
-```{r female_male_education}
+```{r female male education}
 gender = covar_accel |> 
   mutate(
     sex = case_match(
@@ -93,7 +131,7 @@ To create the gender vs education table, I piped in the gender dataframe. I then
 To create a histogram of the number of age distributions for men and women in each education category, I first piped in the gender data frame and ensured unique counts of the participant by their seqn id. I then created a histogram of the resultant data. I specified that it must be a histogram. Faceting by sex and education, I created a side by side comparison of these distributions. For aesthetics I converted the theme to be more minimal, widened the bins, filled the inside white and colored the outsides blue. The resulting diagram shows 6 separate histograms showing the counts of participants by age. There are 2 rows, delimited by gender, and 3 columns delimited by education level. The color scheme matches the school spirit. This histogram reaffirms that there are higher counts of the highest education level in this study. In lower education sections there are sparser age categories. There seems to be more of a balance between gender.
 
 
-```{r activity_level by age_sex/education}
+```{r activity level by age, sex, and education}
 
 act_level_p = gender |> 
    group_by(seqn) |> 
@@ -116,7 +154,7 @@ act_level_p
 ```
 To create a plot comparing total activity level by age, with a further comparison by sex and education, I piped in the previously created gender data frame. From this I aggregated the mims across the minutes of the day to create a total activity level variable. To ensure that no seqn values were double counted, I passed the resulting table through the distinct function. I then created a scatterplot of the total activity vs age of the participant. This plot was faceted by education and a comparison of gender was done by coloring by this variable. I finally added a title, and renamed the x/y axes. This plot shows the relation between total activity and the age of the participant. An additional comparison is made across sex and education level. A clear decrease of total activity can be seen with the increasing age. This decrease is steepest within lower education levels, with a more gradual decrease for more educate participants. While sex is closer together in the least educated, the gender dichotomy is more apparent as the education level progresses. Females were found to have higher activity levels compared to their male counterparts in these higher education levels.
 
-```{r activity_level over the day}
+```{r activity level over the day}
 act_over_day = gender |> 
   select(minute, mims, sex, education) |> 
   mutate(
@@ -143,7 +181,7 @@ From this resultant graph I can see an indication that participants who have les
 ##Problem 3
 
 
-```{r citi_bike_load_in}
+```{r citi bike load in}
 citi_01_20 = read.csv("./data_hw3/citibike/Jan 2020 Citi.csv") |> 
   janitor::clean_names() |> 
   mutate( month = "january",
@@ -187,7 +225,7 @@ head(citi_total)
 When combining all tables, the resultant data frame is a `r nrow(citi_total)` by `r ncol(citi_total)` table. There are nine variables in total. They describe the month, year, weekday, starting and stopping station of the ride. The data also describes the ride type, membership of the rider, and rider's id. The following variables are factors: year, month, weekday, member_casual, rideable_type. Only duration is a numerical variable. The following are character variables: start_station_name, end_station_name
 
 
-```{r rides_per_year_month_member_casual}
+```{r rides per year, month, membership}
 rides_per = citi_total |> 
   group_by(year, month, member_casual) |> 
   summarize(
@@ -201,7 +239,7 @@ rides_per
 ```
 This table shows the number of rides that each type of member did in July/January of 2020 and 2024. The number of rides has had a over a 10 fold increase in casual riders from January 2020 to July 2024. During this same time period member's rides have trippled. From January to July 2020, the number of causal bikers halved while member bikers had slight gains. While in January 2020 members had a 10 fold lead over casual members, by July 2024 they only maintain a 3 fold lead.
 
-```{r most_popular_stations}
+```{r most popular stations}
 pop_stats = citi_total |> 
   filter(
     year == "2024",
@@ -220,7 +258,7 @@ pop_stats
 ```
 
 
-```{r ride_duration by timeframe}
+```{r ride duration by timeframe}
 
 weekday_durn = citi_total |> 
   group_by(year, month, weekdays) |> 
